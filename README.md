@@ -1,1 +1,1 @@
-# CopyTruyenn
+# CopyTruyenn - tiện ích Chrome
