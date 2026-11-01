@@ -1,0 +1,34 @@
+{
+  "manifest_version": 3,
+  "name": "Truyện Extractor",
+  "version": "3.86",
+  "description": "Nhập link truyện, lấy nội dung các chương để sao chép hoặc tải về .txt",
+  "permissions": [
+    "clipboardWrite",
+    "scripting",
+    "notifications"
+  ],
+  "host_permissions": [
+    "https://truyenfull.live/*",
+    "https://*.truyenfull.live/*",
+    "https://truyenfull.win/*",
+    "https://*.truyenfull.win/*",
+    "https://sstruyen.pics/*",
+    "https://*.sstruyen.pics/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Truyện Extractor",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

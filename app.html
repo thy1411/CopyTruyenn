@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Truyện Extractor</title>
+<style>
+  /* Font đọc truyện nhúng sẵn, đủ dấu tiếng Việt (Georgia thiếu các chữ như ấ, ề, ố, ắ nên bị tách dấu) */
+  @font-face { font-family: "Truyen Serif"; font-style: normal; font-weight: 400; font-display: swap;
+    src: url(fonts/noto-serif-latin-400-normal.woff2) format("woff2"); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+  @font-face { font-family: "Truyen Serif"; font-style: normal; font-weight: 400; font-display: swap;
+    src: url(fonts/noto-serif-latin-ext-400-normal.woff2) format("woff2"); unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
+  @font-face { font-family: "Truyen Serif"; font-style: normal; font-weight: 400; font-display: swap;
+    src: url(fonts/noto-serif-vietnamese-400-normal.woff2) format("woff2"); unicode-range: U+0102-0103,U+0110-0111,U+0128-0129,U+0168-0169,U+01A0-01A1,U+01AF-01B0,U+0300-0301,U+0303-0304,U+0308-0309,U+0323,U+0329,U+1EA0-1EF9,U+20AB; }
+  @font-face { font-family: "Truyen Serif"; font-style: normal; font-weight: 700; font-display: swap;
+    src: url(fonts/noto-serif-latin-700-normal.woff2) format("woff2"); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+  @font-face { font-family: "Truyen Serif"; font-style: normal; font-weight: 700; font-display: swap;
+    src: url(fonts/noto-serif-latin-ext-700-normal.woff2) format("woff2"); unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
+  @font-face { font-family: "Truyen Serif"; font-style: normal; font-weight: 700; font-display: swap;
+    src: url(fonts/noto-serif-vietnamese-700-normal.woff2) format("woff2"); unicode-range: U+0102-0103,U+0110-0111,U+0128-0129,U+0168-0169,U+01A0-01A1,U+01AF-01B0,U+0300-0301,U+0303-0304,U+0308-0309,U+0323,U+0329,U+1EA0-1EF9,U+20AB; }
+  :root {
+    --bg: #eef1f6;
+    --surface: #ffffff;
+    --surface-2: #f5f7fb;
+    --sheet: #fdfdfb;
+    --ink: #1b2340;
+    --muted: #5d6785;
+    --line: #d9deea;
+    --accent: #2f3d94;
+    --accent-ink: #ffffff;
+    --accent-soft: #e6e9f8;
+    --ok: #16765a;
+    --warn-bg: #fff4e0;
+    --warn-ink: #7a4304;
+    --warn-line: #e3a14b;
+    --ui: "Segoe UI Variable Text", "Segoe UI", Inter, system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+    --read: "Truyen Serif", "Noto Serif", "Times New Roman", Cambria, "Palatino Linotype", serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1424;
+      --surface: #1a2038;
+      --surface-2: #212844;
+      --sheet: #161c31;
+      --ink: #e8ebf7;
+      --muted: #9ba5c6;
+      --line: #2d3556;
+      --accent: #9aa8ff;
+      --accent-ink: #11173a;
+      --accent-soft: #272f5c;
+      --ok: #58d3a8;
+      --warn-bg: #3a2a10;
+      --warn-ink: #f4cf94;
+      --warn-line: #c58a33;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html { background: #0a1a6e; }
+  /* Ảnh nền cố định, phủ một lớp tối nhẹ để chữ dễ đọc */
+  body::before {
+    content: ""; position: fixed; inset: 0; z-index: -1;
+    background: linear-gradient(rgba(6, 10, 40, .25), rgba(6, 10, 40, .25)), url(bg.jpg) center top / cover no-repeat;
+  }
+  /* ---- Hiệu ứng nền: sao băng thỉnh thoảng vụt qua (chỉ đổi transform/opacity nên rất nhẹ) ---- */
+  #fx { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+  #fx .fx-m {
+    position: absolute; left: var(--x); top: var(--y); width: var(--l); height: 2px; border-radius: 2px; opacity: 0;
+    background: linear-gradient(to right, rgba(170,205,255,0), rgba(255,255,255,.95));
+    box-shadow: 0 0 6px 1px rgba(200,225,255,.55);
+    will-change: transform, opacity; animation: fx-meteor var(--d) linear var(--t) infinite;
+  }
+  @keyframes fx-meteor {
+    0%   { transform: translate3d(0, 0, 0) rotate(32deg); opacity: 0; }
+    1.5% { opacity: 1; }
+    8%   { transform: translate3d(46vw, 29vw, 0) rotate(32deg); opacity: 0; }
+    100% { transform: translate3d(46vw, 29vw, 0) rotate(32deg); opacity: 0; }
+  }
+  body.fx-paused #fx .fx-m { animation-play-state: paused; }
+  @media (prefers-reduced-motion: reduce) { #fx { display: none; } }
+
+  /* Nhân vật chibi cá mập đi dạo + làm nũng (mascot.js) */
+  #mascot { position: fixed; left: 0; bottom: 0; z-index: 5; height: 116px; pointer-events: none; will-change: transform; }
+  #mascot .mc-flip { height: 100%; transform-origin: 50% 100%; }
+  #mascot .mc-img { display: block; height: 100%; width: auto; transform-origin: 50% 100%; user-select: none; -webkit-user-drag: none;
+    filter: drop-shadow(0 3px 5px rgba(0, 0, 0, .35)); }
+  #mascot .mc-shadow { position: absolute; left: 50%; bottom: -1px; width: 50%; height: 9px; margin-left: -25%; border-radius: 50%;
+    background: rgba(0, 0, 0, .4); filter: blur(3px); z-index: -1; }
+  html.mc-hover, html.mc-hover * { cursor: grab !important; }
+  html.mc-grabbing, html.mc-grabbing * { cursor: grabbing !important; }
+  /* dáng đi / đứng / nhảy */
+  #mascot.mc-walk .mc-img { animation: none; }   /* khi chạy đã có khung hình riêng (run/), không cần nhún nữa */
+  #mascot.mc-idle .mc-img { animation: mc-breathe 2.8s ease-in-out infinite; }
+  #mascot.mc-hop .mc-img { animation: mc-hop .62s cubic-bezier(.3, .7, .4, 1); }
+  @keyframes mc-step {
+    0%, 100% { transform: translateY(0) rotate(-3deg); } 25% { transform: translateY(-6px) rotate(0); }
+    50% { transform: translateY(0) rotate(3deg); } 75% { transform: translateY(-6px) rotate(0); }
+  }
+  @keyframes mc-breathe { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(1.025); } }
+  @keyframes mc-hop {
+    0% { transform: scale(1.04, .94); } 30% { transform: translateY(-34px) scale(.98, 1.04); }
+    60% { transform: translateY(-34px) scale(.98, 1.04); } 100% { transform: translateY(0) scale(1); }
+  }
+  /* các kiểu làm nũng (nhún / lắc / nghiêng đầu / giậm chân), tâm xoay ở chân nên nhìn như đang đứng làm nũng */
+  #mascot.mc-heart .mc-img { animation: mc-joy .55s ease-in-out 2; }
+  @keyframes mc-joy { 0%, 100% { transform: translateY(0) scale(1.03, .96); } 45% { transform: translateY(-16px) rotate(-5deg) scale(.98, 1.04); } 75% { transform: translateY(-4px) rotate(4deg); } }
+  #mascot.mc-sway .mc-img { animation: mc-sway-body 1.9s ease-in-out; transform-origin: 50% 100%; }
+  @keyframes mc-sway-body { 0%, 100% { transform: rotate(0); } 18% { transform: rotate(-7deg); } 42% { transform: rotate(7deg); } 66% { transform: rotate(-6deg); } 86% { transform: rotate(4deg); } }
+  #mascot.mc-shy .mc-img { animation: mc-shy 1.5s ease-in-out; transform-origin: 50% 90%; }
+  @keyframes mc-shy { 0% { transform: none; } 20%, 70% { transform: rotate(-8deg) translateX(-4px) scale(.95, .93); } 35% { transform: rotate(-11deg) translateX(-6px) scale(.94, .92); } 100% { transform: none; } }
+  #mascot.mc-pout .mc-img { animation: mc-pout 1.7s ease-in-out; transform-origin: 50% 100%; }
+  @keyframes mc-pout {
+    0% { transform: none; } 8% { transform: scale(1.04, .94); } 16% { transform: translate(-4px, -6px) rotate(-3deg); } 24% { transform: translate(4px, 0) scale(1.03, .95); }
+    32% { transform: translate(-4px, -6px) rotate(3deg); } 40% { transform: translate(4px, 0) scale(1.03, .95); } 52%, 88% { transform: rotate(7deg) scale(.97, .98); } 100% { transform: none; }
+  }
+  #mascot.mc-kiss .mc-img { animation: mc-kiss 1.4s ease-in-out; transform-origin: 50% 100%; }
+  @keyframes mc-kiss { 0% { transform: none; } 22% { transform: rotate(6deg) translateY(2px) scale(1.04, .95); } 40% { transform: rotate(-9deg) translateX(-6px) scale(1.05); } 70% { transform: rotate(-6deg) translateX(-4px) scale(1.03); } 100% { transform: none; } }
+  #mascot.mc-bubble .mc-img { animation: mc-bob 1.5s ease-in-out; }
+  @keyframes mc-bob { 0%, 100% { transform: translateY(0) scale(1); } 25% { transform: translateY(-5px) scale(1.04, 1.02); } 50% { transform: translateY(0) scale(.98, 1.04); } 75% { transform: translateY(-4px) scale(1.03); } }
+  #mascot.mc-held .mc-shadow, #mascot.mc-fall .mc-shadow { opacity: 0; }
+  #mascot.mc-land .mc-img { animation: none; }   /* khung chạm đất đã có dáng ngồi bệt sẵn */
+  @keyframes mc-land { 0% { transform: scale(1.2, .74); } 55% { transform: scale(.95, 1.06); } 100% { transform: none; } }
+  #mascot .mc-say { position: absolute; left: 50%; bottom: 100%; margin-bottom: calc(4px + var(--up, 0px)); margin-left: var(--shift, 0px); transform: translateX(-50%) scale(.6); opacity: 0; white-space: nowrap;
+    padding: 3px 11px; border-radius: 10px; background: rgba(255, 255, 255, .96); color: #1b2340; font: 800 14px/1.3 var(--ui); letter-spacing: .02em;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, .35); transition: opacity .15s, transform .15s; }
+  #mascot .mc-say::after { content: ""; position: absolute; left: 50%; top: 100%; margin-left: calc(-5px - var(--shift, 0px)); border: 5px solid transparent; border-top-color: rgba(255, 255, 255, .96); }
+  #mascot .mc-say.show { opacity: 1; transform: translateX(-50%) scale(1); }
+  /* hiệu ứng tim / bong bóng / lấp lánh (nằm trong lớp #mc-vfx theo toạ độ màn hình) */
+  #mc-vfx { position: fixed; inset: 0; z-index: 6; overflow: hidden; pointer-events: none; }
+  .mc-fx { position: absolute; pointer-events: none; opacity: 0; }
+  .mc-heart { width: 18px; height: 17px; animation: mc-rise var(--dur, 1400ms) ease-out forwards; filter: drop-shadow(0 1px 2px rgba(255, 90, 160, .45)); }
+  .mc-heart svg, .mc-star svg { display: block; width: 100%; height: 100%; fill: currentColor; }
+  @keyframes mc-rise {
+    0% { opacity: 0; transform: translate(0, 0) scale(.3) rotate(0); }
+    15% { opacity: 1; transform: translate(calc(var(--dx, 0px) * .2), calc(var(--dy, -90px) * .15)) scale(var(--s, 1)) rotate(calc(var(--r, 0deg) * .5)); }
+    100% { opacity: 0; transform: translate(var(--dx, 0px), var(--dy, -90px)) scale(calc(var(--s, 1) * 1.1)) rotate(var(--r, 0deg)); }
+  }
+  .mc-bub { border-radius: 50%; border: 1.5px solid rgba(190, 232, 255, .95);
+    background: radial-gradient(circle at 30% 28%, rgba(255, 255, 255, .95) 0 14%, rgba(190, 232, 255, .28) 40%, rgba(120, 200, 255, .1) 70%);
+    box-shadow: 0 0 6px rgba(150, 215, 255, .6); animation: mc-float var(--dur, 1900ms) ease-in-out forwards; }
+  @keyframes mc-float {
+    0% { opacity: 0; transform: translate(0, 0) scale(.4); } 12% { opacity: .95; transform: translate(0, calc(var(--dy, -110px) * .1)) scale(1); }
+    50% { transform: translate(var(--dx, 0px), calc(var(--dy, -110px) * .55)) scale(1.05); } 100% { opacity: 0; transform: translate(calc(var(--dx, 0px) * -.6), var(--dy, -110px)) scale(1.15); }
+  }
+  .mc-star { width: 14px; height: 14px; animation: mc-twinkle var(--dur, 900ms) ease-in-out forwards; filter: drop-shadow(0 0 3px rgba(255, 255, 255, .9)); }
+  @keyframes mc-twinkle { 0% { opacity: 0; transform: scale(.2) rotate(0); } 40% { opacity: 1; transform: scale(var(--s, 1)) rotate(40deg); } 100% { opacity: 0; transform: scale(.2) rotate(90deg); } }
+  @media (prefers-reduced-motion: reduce) { #mascot .mc-img { animation: none !important; } #mc-vfx, #mc-vfxb { display: none; } }
+  @media print { #mascot, #mc-vfx, #mc-vfxb { display: none; } }
+  body {
+    margin: 0 auto; max-width: 920px; padding: 32px 20px 72px;
+    font: 14px/1.5 var(--ui); color: var(--ink); background: transparent;
+  }
+
+  /* Đầu trang */
+  .top h1 { margin: 0; font: 700 29px/1.15 var(--read); letter-spacing: -0.01em; color: #fff; text-shadow: 0 2px 12px rgba(0,0,0,.5); }
+  .top p { margin: 6px 0 22px; color: #d5dcf5; font-size: 14px; text-shadow: 0 1px 8px rgba(0,0,0,.5); }
+
+  /* Khối */
+  .card {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+    padding: 20px 22px; margin-bottom: 16px;
+  }
+  .card > h2 { margin: 0 0 4px; font-size: 16px; font-weight: 650; }
+  .card > .lead { margin: 0 0 16px; color: var(--muted); }
+
+  /* Ô nhập */
+  input[type=text], input[type=number], select, textarea {
+    font: inherit; color: var(--ink); background: var(--surface);
+    border: 1px solid var(--line); border-radius: 8px;
+  }
+  input[type=text], input[type=number], select { height: 40px; padding: 0 12px; }
+  input[type=text] { width: 100%; }
+  input[type=number] { width: 100%; }
+  input::placeholder, textarea::placeholder { color: var(--muted); opacity: .8; }
+  :is(input, select, textarea, button, summary):focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px;
+  }
+
+  .fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px 18px; margin-top: 16px; }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field > span { font-weight: 600; }
+  .field > small { color: var(--muted); font-size: 12.5px; line-height: 1.4; }
+
+  details.adv { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px; }
+  details.adv summary { cursor: pointer; font-weight: 600; list-style: none; display: inline-flex; align-items: center; gap: 6px; }
+  details.adv summary::-webkit-details-marker { display: none; }
+  details.adv summary::after { content: "▾"; color: var(--muted); transition: transform .15s; }
+  details.adv[open] summary::after { transform: rotate(180deg); }
+  details.adv .fields { margin-top: 12px; }
+
+  /* Nút */
+  button {
+    font: inherit; font-weight: 600; min-height: 38px; padding: 0 16px; cursor: pointer;
+    color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px;
+  }
+  button:hover:not(:disabled) { background: var(--accent-soft); border-color: var(--accent); }
+  button.primary { color: var(--accent-ink); background: var(--accent); border-color: var(--accent); }
+  button.primary:hover:not(:disabled) { filter: brightness(1.1); background: var(--accent); }
+  button:disabled { opacity: .45; cursor: default; }
+  .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
+
+  /* Trạng thái và cảnh báo */
+  #status {
+    display: flex; align-items: center; gap: 10px; margin: 0 0 12px; padding: 10px 14px;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow-wrap: anywhere;
+  }
+  #status:empty { display: none; }
+  body:has(#run:disabled) #status::before {
+    content: ""; flex: none; width: 14px; height: 14px; border-radius: 50%;
+    border: 2px solid var(--line); border-top-color: var(--accent); animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #warn {
+    margin: 0 0 12px; padding: 10px 14px; max-height: 170px; overflow: auto; white-space: pre-line;
+    color: var(--warn-ink); background: var(--warn-bg); border-left: 4px solid var(--warn-line);
+    border-radius: 0 10px 10px 0; font-size: 13px; line-height: 1.5; overflow-wrap: anywhere;
+  }
+  #warn:empty { display: none; }
+  .rm { margin: 0 0 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--sheet); font-size: 13px; }
+  .rm > summary { cursor: pointer; padding: 10px 14px; font-weight: 600; }
+  #manualbox.manual { border-left: 4px solid var(--warn-line); }
+  #manuallist { max-height: 360px; overflow: auto; padding: 0 14px 12px; }
+  .rm-tools { padding: 0 14px 8px; }
+  #rmlist { max-height: 320px; overflow: auto; padding: 0 14px 12px; }
+  .rm-lo { border-top: 1px solid var(--line); }
+  .rm-lo:first-child { border-top: 0; }
+  .rm-lo > summary { cursor: pointer; padding: 9px 0; font-weight: 650; }
+  .rm-lo > .rm-row:first-of-type { border-top: 0; }
+  .rm-row { padding: 8px 8px; margin: 0 -8px; border-top: 1px solid var(--line); overflow-wrap: anywhere; cursor: pointer; border-radius: 6px; }
+  .rm-row:hover, .rm-row:focus-visible { background: var(--accent-soft); outline: none; }
+  .rm-h { font-size: 12px; opacity: .7; }
+  .rm-b { text-decoration: line-through; opacity: .85; }
+  .rm-a { color: var(--accent); }
+
+  /* Bản thảo: phần chính của giao diện */
+  .sheet { padding: 0; overflow: hidden; background: var(--sheet); }
+  .sheet-bar {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+    padding: 12px 16px; background: var(--surface); border-bottom: 1px solid var(--line);
+  }
+  .sheet-bar h2 { margin: 0; font-size: 16px; font-weight: 650; }
+  .sheet-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  #batchRow { flex-basis: 100%; align-items: center; gap: 8px; flex-wrap: wrap; padding-top: 12px; border-top: 1px solid var(--line); }
+  #batchRow select { flex: 0 1 300px; min-width: 0; }
+  #batchBtn { flex: 0 1 300px; min-width: 0; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #batchPanel { flex-basis: 100%; padding: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+  #batchPanel[hidden] { display: none; }
+  /* Ô "Tới chương số": nền xanh nhạt + viền đậm để nổi lên khỏi nền trắng */
+  .lo-tools { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; padding: 10px 12px; background: var(--accent-soft); border: 1px solid var(--accent); border-left-width: 5px; border-radius: 10px; }
+  #batchRow .lo-tools small { color: var(--ink); }
+  .lo-tools input[type=number] { border-color: var(--accent); }
+  .lo-tools input[type=number] { width: 150px; height: 34px; }
+  #batchGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(98px, 1fr)); gap: 6px; max-height: 240px; overflow: auto; padding: 2px; }
+  .lo-cell { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 50px; padding: 6px 4px; line-height: 1.25; font-size: 13px; }
+  #batchRow .lo-cell small { font-weight: 400; color: var(--muted); font-size: 11.5px; }
+  .lo-cell.active { color: var(--accent-ink); background: var(--accent); border-color: var(--accent); }
+  #batchRow .lo-cell.active small { color: var(--accent-ink); opacity: .9; }
+  .lo-cell.copied::after { content: "✓"; position: absolute; top: 2px; right: 6px; font-size: 12px; color: var(--ok); }
+  .lo-cell.active.copied::after { color: var(--accent-ink); }
+  #batchRow small { color: var(--muted); font-size: 12.5px; }
+  /* Thông báo sao chép/chuyển lô: dòng riêng, không đụng tới dòng tiến trình lấy chương */
+  #sheetMsg { padding: 8px 16px; font-size: 13px; color: var(--ink); background: var(--surface-2); border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+  #sheetMsg:empty { display: none; }
+  #out {
+    display: block; width: 100%; height: 62vh; min-height: 320px; resize: vertical;
+    border: 0; border-radius: 0; background: var(--sheet);
+    padding: 28px clamp(18px, 7vw, 80px); font: 16.5px/1.85 var(--read);
+  }
+  #out:focus-visible { outline-offset: -3px; }
+
+  /* Kiểm tra & sửa */
+  code { font-size: 12.5px; background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
+  /* Ô nhập từ bị cấm: nền vàng cam nhạt + viền đậm để dễ thấy, khác màu với ô "Tới chương số" */
+  .addrow { display: flex; gap: 8px; margin-top: 12px; padding: 10px 12px; background: var(--warn-bg); border: 1px solid var(--warn-line); border-left-width: 5px; border-radius: 10px; }
+  .addrow input[type=text] { border-color: var(--warn-line); }
+  #bwAdd { border-color: var(--warn-line); font-weight: 600; }
+  .addrow input[type=text] { flex: 1; min-width: 0; }
+  #bwMsg { margin-top: 6px; font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+  #bwMsg:empty { display: none; }
+  #badwords { width: 100%; height: 96px; margin-top: 0; padding: 10px 12px; font: 13px/1.5 var(--ui); resize: vertical; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  .chips[hidden] { display: none; }
+  label.chk {
+    display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; cursor: pointer;
+    border: 1px solid var(--line); border-radius: 999px; background: var(--surface);
+  }
+  label.chk:has(input:checked) { background: var(--accent-soft); border-color: var(--accent); }
+  label.chk input { accent-color: var(--accent); margin: 0; }
+  #report { margin-top: 14px; font-size: 13px; line-height: 1.55; overflow-wrap: anywhere; }
+  #report:empty { display: none; }
+  #report .issue , #manualbox .issue { padding: 8px 12px; margin-bottom: 6px; border-left: 4px solid var(--line); background: var(--surface-2); border-radius: 0 8px 8px 0; }
+  #report .issue.fixable , #manualbox .issue.fixable { border-color: var(--accent); }
+  #report .issue.manual , #manualbox .issue.manual { border-color: var(--warn-line); }
+  #report .issue small , #manualbox .issue small { color: var(--muted); }
+  #report details.issue > summary { cursor: pointer; }
+  #report .loc-list , #manualbox .loc-list { margin-top: 6px; max-height: 260px; overflow: auto; }
+  #report .loc , #manualbox .loc { display: flex; gap: 10px; padding: 5px 8px; margin: 0 -8px; border-top: 1px solid var(--line); cursor: pointer; border-radius: 6px; }
+  #report .loc:hover, #report .loc:focus-visible, #manualbox .loc:hover, #manualbox .loc:focus-visible { background: var(--accent-soft); outline: none; }
+  #report .loc-ch , #manualbox .loc-ch { flex: 0 0 auto; min-width: 74px; font-size: 12px; font-weight: 600; color: var(--muted); }
+  #report .loc-t , #manualbox .loc-t { flex: 1; min-width: 0; }
+  #report .loc-more , #manualbox .loc-more { padding: 6px 0 0; color: var(--muted); font-size: 12.5px; }
+  #report .ok { color: var(--ok); font-weight: 600; margin-bottom: 8px; }
+
+  /* Hộp hỏi xác nhận (kiểu hộp xin quyền của trình duyệt) */
+  .ask {
+    position: fixed; z-index: 10; top: 16px; left: 50%; transform: translateX(-50%);
+    width: min(430px, calc(100vw - 24px)); padding: 16px 16px 12px;
+    display: grid; grid-template-columns: 56px 1fr; gap: 4px 14px; align-items: start;
+    background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 10px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, .35); animation: askIn .2s ease-out;
+  }
+  .ask[hidden] { display: none; }
+  .ask-ico { width: 56px; height: 56px; border-radius: 12px; object-fit: cover; }
+  .ask p { margin: 2px 0 0; font-size: 14px; line-height: 1.45; }
+  .ask-btns { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+  .ask-btns button { min-height: 36px; padding: 0 16px; font-size: 13px; font-weight: 650; letter-spacing: .03em; text-transform: uppercase; border-radius: 6px; }
+  .ask-no { background: transparent; border-color: transparent; color: var(--muted); }
+  .ask-yes { background: #1a73e8; border-color: #1a73e8; color: #fff; }
+  .ask-btns .ask-yes:hover:not(:disabled) { background: #1a73e8; border-color: #1a73e8; filter: brightness(1.1); }
+  @keyframes askIn { from { opacity: 0; transform: translate(-50%, -8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+  @media (prefers-reduced-motion: reduce) { .ask { animation: none; } }
+
+  @media (max-width: 560px) {
+    body { padding: 20px 12px 56px; }
+    .card { padding: 16px; }
+    #out { height: 55vh; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    body:has(#run:disabled) #status::before { animation: none; }
+    details.adv summary::after { transition: none; }
+  }
+</style>
+</head>
+<body>
+  <div id="fx" aria-hidden="true"></div>
+  <header class="top">
+    <h1>Truyện Extractor</h1>
+    <p>Lấy các chương từ truyenfull, tự chia lô và kiểm tra lỗi trước khi đăng.</p>
+  </header>
+
+  <section class="card">
+    <h2>Nguồn truyện</h2>
+    <p class="lead">Dán link truyện hoặc link một chương bất kỳ.</p>
+    <input type="text" id="url" placeholder="https://truyenfull.live/ten-truyen/" aria-label="Link truyện hoặc link chương">
+
+    <div class="fields">
+      <label class="field">
+        <span>Bắt đầu từ chương số</span>
+        <input type="number" id="startchap" min="1" placeholder="Từ đầu">
+        <small>Để lấy tiếp từ chương 21, dán link truyện và nhập 21. Không cần mở chương đó.</small>
+      </label>
+      <label class="field">
+        <span>Số chương lấy mỗi lần</span>
+        <input type="number" id="count" value="0" min="0">
+        <small>Nhập 0 để lấy đến hết truyện.</small>
+      </label>
+    </div>
+
+    <details class="adv">
+      <summary>Tùy chọn tốc độ và chia lô</summary>
+      <div class="fields">
+        <label class="field">
+          <span>Nghỉ giữa các chương (ms)</span>
+          <input type="number" id="delay" value="0" min="0" step="100">
+          <small>Tăng lên nếu trang hay chặn khi đọc nhiều chương.</small>
+        </label>
+        <label class="field">
+          <span>Số chương mỗi lần sao chép</span>
+          <input type="number" id="batchsize" value="20" min="0">
+          <small>Nhập 0 nếu không muốn chia lô.</small>
+        </label>
+        <label class="field">
+          <span>Số chữ tối thiểu mỗi chương</span>
+          <input type="number" id="minwords" value="1000" min="0" step="100">
+          <small>Chương ngắn hơn được gộp với chương sau cho đủ. Nhập 0 để không gộp.</small>
+        </label>
+      </div>
+    </details>
+
+    <div class="chips" hidden>
+      <label class="chk"><input type="checkbox" id="autofix" checked> Tự động sửa khi lấy nội dung (theo các mục đã tick ở phần Kiểm tra và sửa)</label>
+    </div>
+    <div class="actions">
+      <button id="run" class="primary">Lấy nội dung</button>
+      <button id="stop" disabled>Dừng</button>
+    </div>
+  </section>
+
+  <div id="status" role="status" aria-live="polite"></div>
+  <div id="warn"></div>
+  <details id="manualbox" class="rm manual" hidden>
+    <summary id="manualsum"></summary>
+    <div class="rm-tools"><button type="button" id="manualrefresh">Kiểm tra lại</button></div>
+    <div id="manuallist"></div>
+  </details>
+  <details id="rmbox" class="rm" hidden>
+    <summary id="rmsum"></summary>
+    <div class="rm-tools"><button type="button" id="rmcopy">Sao chép danh sách</button></div>
+    <div id="rmlist"></div>
+  </details>
+
+  <section class="card sheet">
+    <div class="sheet-bar">
+      <h2>Bản thảo</h2>
+      <div class="sheet-tools">
+        <button id="copy" class="primary" disabled>Sao chép</button>
+        <button id="save" disabled>Tải .txt</button>
+      </div>
+      <div id="batchRow" style="display:none">
+        <button id="prevBatch">‹ Lô trước</button>
+        <button id="batchBtn" type="button" aria-expanded="false" aria-controls="batchPanel" title="Bấm để chọn lô">Lô 1 ▾</button>
+        <select id="batch" aria-label="Chọn lô" hidden></select>
+        <button id="nextBatch">Lô sau ›</button>
+        <label class="chk" style="display:none"><input type="checkbox" id="autocopy" checked> Tự sao chép khi chuyển lô</label>
+        <small>Sao chép, Tải .txt, Kiểm tra và Tự sửa áp dụng cho lô đang hiển thị.</small>
+        <div id="batchPanel" hidden>
+          <div class="lo-tools">
+            <input type="number" id="batchGoto" min="1" placeholder="Tới chương số…" aria-label="Tới chương số">
+            <small>Nhập số chương rồi nhấn Enter để nhảy tới lô chứa chương đó. Dấu ✓ là lô đã sao chép.</small>
+          </div>
+          <div id="batchGrid"></div>
+        </div>
+      </div>
+    </div>
+    <div id="sheetMsg" role="status" aria-live="polite"></div>
+    <textarea id="out" placeholder="Nội dung các chương hiện ở đây sau khi bạn bấm Lấy nội dung. Bạn cũng có thể dán văn bản vào để kiểm tra."></textarea>
+  </section>
+
+  <section class="card">
+    <h2>Kiểm tra và sửa theo quy định tieuthuyet.vn</h2>
+    <p class="lead">Gõ từ vào ô bên dưới rồi nhấn Enter, từ sẽ tự được che bằng dấu chấm (ví dụ thủ tướng → [t.h.ủ t.ư.ớ.n.g]). Thêm dấu = ngay sau từ để XÓA từ đó (ví dụ nhà cái= → bỏ hẳn chữ "nhà cái"); viết = rồi chữ khác để thay bằng chữ đó (nhà cái=sòng bạc). Danh sách tự lưu trong trình duyệt.</p>
+    <textarea id="badwords" placeholder="Danh sách từ bị cấm sẽ hiện ở đây"></textarea>
+    <div class="addrow">
+      <input type="text" id="bwNew" placeholder="Gõ từ rồi nhấn Enter (thêm = ở cuối để xóa từ, vd: nhà cái=)" aria-label="Thêm từ bị cấm" autocomplete="off">
+      <button type="button" id="bwAdd">Thêm</button>
+    </div>
+    <div id="bwMsg" role="status" aria-live="polite"></div>
+    <div class="chips" id="fixOpts" hidden>
+      <label class="chk"><input type="checkbox" id="o_links" checked> Xóa link / số điện thoại</label>
+      <label class="chk"><input type="checkbox" id="o_words" checked> Xử lý từ trong danh sách</label>
+      <label class="chk"><input type="checkbox" id="o_vol" checked> Truyện chia quyển: bỏ "Quyển X -", đánh số chương liên tục</label>
+      <label class="chk"><input type="checkbox" id="o_source" checked> Xóa dòng ghi nguồn / người dịch</label>
+      <label class="chk"><input type="checkbox" id="o_emoji" checked> Xóa emoji</label>
+      <label class="chk"><input type="checkbox" id="o_social" checked> Xóa quảng cáo Zalo / Facebook và khối xin ủng hộ / số tài khoản</label>
+      <label class="chk"><input type="checkbox" id="o_notice" checked> Xóa dòng thông báo / lời tác giả</label>
+      <label class="chk"><input type="checkbox" id="o_title" checked> Sửa tên chương viết hoa toàn bộ</label>
+      <label class="chk"><input type="checkbox" id="o_dup" checked> Xóa tên chương bị lặp</label>
+      <label class="chk"><input type="checkbox" id="o_midchap" checked> Xóa dòng "Chương N" bị lặp trong nội dung</label>
+      <label class="chk"><input type="checkbox" id="o_quote" checked> Đóng chữ "chương" trong nội dung vào ngoặc kép</label>
+    </div>
+    <div class="actions">
+      <button id="runCheck">Kiểm tra</button>
+      <button id="runFix" class="primary">Tự sửa</button>
+      <button id="undoFix" disabled>Hoàn tác</button>
+    </div>
+    <div id="report"></div>
+  </section>
+
+  <div id="ask" class="ask" role="alertdialog" aria-live="assertive" aria-labelledby="askMsg" hidden>
+    <img class="ask-ico" src="icons/icon128.png" alt="">
+    <p id="askMsg"></p>
+    <div class="ask-btns">
+      <button id="askNo" class="ask-no">Bỏ qua</button>
+      <button id="askYes" class="ask-yes">Mở tab xác minh</button>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+  <script src="check.js"></script>
+  <script src="fx.js"></script>
+  <script src="mascot.js"></script>
+</body>
+</html>
